@@ -6,6 +6,7 @@ from tornado import gen
 from tornado.iostream import StreamClosedError
 from tornado.tcpserver import TCPServer
 from tornado.options import options, define
+import os
 
 define("port", default=9888, help="TCP port to listen on")
 logger = logging.getLogger(__name__)
@@ -40,6 +41,8 @@ class EchoServer(TCPServer):
         print('ack')
         len  = ser.write("6456456464".encode())
         print(len)  # 可以接收中文
+        status = os.system("ping 192.168.5.22299")
+        #print('-----:'+status)
         for c in self.clients:
             c.write(b'11');
 
