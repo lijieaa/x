@@ -162,7 +162,6 @@ class EchoServer(TCPServer):
         #print('-----:'+status)
 
         for c in self.clients:
-
             c.write(b'11');
 
 
