@@ -91,11 +91,40 @@ def send_magic_packet(*macs, **kwargs):
     sock.close()
 
 
+class Connection(object):
+    clients = set()
+    def __init__(self, stream, address):
+        Connection.clients.add(self)
+        self._stream = stream
+        self._address = address
+        self._stream.set_close_callback(self.on_close)
+        self.read_message()
+        print("A new connection has entered ", address)
+
+    def read_message(self):
+        self._stream.read_until(b'\n', self.broadcast_messages)
+
+    def broadcast_messages(self, data):
+        print("User said:", data[:-1], self._address)
+        for conn in Connection.clients:
+            conn.send_message(data)
+        self.read_message()
+
+    def send_message(self, data):
+        self._stream.write(data)
+
+    def on_close(self):
+        print("A connection close", self._address)
+        Connection.clients.remove(self)
+
+
 class EchoServer(TCPServer):
     clients=set()
     @gen.coroutine
     def handle_stream(self, stream, address):
         self.clients.add(stream)
+        print("connection num is:", len(self.clients))
+        #Connection(stream, address)
         while True:
             try:
                 data = yield stream.read_until(b"\n")
@@ -116,9 +145,12 @@ class EchoServer(TCPServer):
                 yield stream.write(data)
             except StreamClosedError:
                 logger.warning("Lost client at host %s", address[0])
+                self.clients.remove(stream)
+                print("connection num is:", len(self.clients))
                 break
             except Exception as e:
-                print(e)
+                #print(e)
+                pass
 
     def ack(self):
         print('ack')
@@ -128,7 +160,9 @@ class EchoServer(TCPServer):
         #print(len1)  # 可以接收中文
         status = os.system("ping 192.168.5.22299")
         #print('-----:'+status)
+
         for c in self.clients:
+
             c.write(b'11');
 
 
