@@ -9,7 +9,7 @@ from tornado.iostream import StreamClosedError
 from tornado.tcpserver import TCPServer
 from tornado.options import options, define
 import os
-
+import platform
 import socket
 import struct
 
@@ -22,13 +22,22 @@ logger = logging.getLogger(__name__)
 
 
 #打开串口
-serialPort="COM1"   #串口
 baudRate=9600       #波特率
-ser1=serial.Serial("COM1",baudRate,timeout=0.5)
-ser2=serial.Serial("COM2",baudRate,timeout=0.5)
-ser3=serial.Serial("COM3",baudRate,timeout=0.5)
+print("os=%s"%(platform.system()))
+sysstr = platform.system()
+if(sysstr =="Windows"):
+    ser1=serial.Serial("COM1",baudRate,timeout=0.5)
+    ser2=serial.Serial("COM2",baudRate,timeout=0.5)
+    ser3=serial.Serial("COM3",baudRate,timeout=0.5)
+    ser4=serial.Serial("COM4",baudRate,timeout=0.5)
+elif(sysstr == "Linux"):
+    ser1=serial.Serial("/dev/ttyUSB0",baudRate,timeout=0.5)
+    ser2=serial.Serial("/dev/ttyUSB1",baudRate,timeout=0.5)
+    ser3=serial.Serial("/dev/ttyUSB2",baudRate,timeout=0.5)
+    ser4=serial.Serial("/dev/ttyUSB3",baudRate,timeout=0.5)
 
-print("参数设置：串口=%s ，波特率=%d"%(serialPort,baudRate))
+
+print("参数设置 ，波特率=%d"%(baudRate))
 
 
 def create_magic_packet(macaddress):
@@ -89,33 +98,6 @@ def send_magic_packet(*macs, **kwargs):
     for packet in packets:
         sock.send(packet)
     sock.close()
-
-
-class Connection(object):
-    clients = set()
-    def __init__(self, stream, address):
-        Connection.clients.add(self)
-        self._stream = stream
-        self._address = address
-        self._stream.set_close_callback(self.on_close)
-        self.read_message()
-        print("A new connection has entered ", address)
-
-    def read_message(self):
-        self._stream.read_until(b'\n', self.broadcast_messages)
-
-    def broadcast_messages(self, data):
-        print("User said:", data[:-1], self._address)
-        for conn in Connection.clients:
-            conn.send_message(data)
-        self.read_message()
-
-    def send_message(self, data):
-        self._stream.write(data)
-
-    def on_close(self):
-        print("A connection close", self._address)
-        Connection.clients.remove(self)
 
 
 class EchoServer(TCPServer):
