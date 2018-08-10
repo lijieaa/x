@@ -9,10 +9,29 @@ from tornado.iostream import StreamClosedError
 from tornado.tcpserver import TCPServer
 from tornado.options import options, define
 import os
-
+import platform
 import socket
 import struct
+import operator as op
 
+#配置
+on_commad="PWR ON" #开投影机指令
+off_commad="PWR OFF" #关投影机指令
+#设备信息
+pc_device={
+    "pc1":"08-60-6E-75-98-2D@192.168.0.1",
+    "pc2":"08-60-6E-75-98-2D@192.168.0.1"
+}
+#配置
+
+
+
+
+
+
+
+
+serial_available=True
 BROADCAST_IP = '192.168.30.255'
 DEFAULT_PORT = 9
 
@@ -22,13 +41,30 @@ logger = logging.getLogger(__name__)
 
 
 #打开串口
-serialPort="COM1"   #串口
 baudRate=9600       #波特率
-ser1=serial.Serial("COM1",baudRate,timeout=0.5)
-ser2=serial.Serial("COM2",baudRate,timeout=0.5)
-ser3=serial.Serial("COM3",baudRate,timeout=0.5)
+print("os=%s"%(platform.system()))
+sysstr = platform.system()
+if(sysstr =="Windows"):
+    try:
+        ser1=serial.Serial("COM1",baudRate,timeout=0.5)
+        ser2=serial.Serial("COM2",baudRate,timeout=0.5)
+        ser3=serial.Serial("COM3",baudRate,timeout=0.5)
+        ser4=serial.Serial("COM4",baudRate,timeout=0.5)
+    except Exception as e:
+        serial_available=False
+        print("串口不可用！")
+elif(sysstr == "Linux"):
+    try:
+        ser1=serial.Serial("/dev/ttyUSB0",baudRate,timeout=0.5)
+        ser2=serial.Serial("/dev/ttyUSB1",baudRate,timeout=0.5)
+        ser3=serial.Serial("/dev/ttyUSB2",baudRate,timeout=0.5)
+        ser4=serial.Serial("/dev/ttyUSB3",baudRate,timeout=0.5)
+    except Exception as e:
+        serial_available=False
+        print("串口不可用！")
 
-print("参数设置：串口=%s ，波特率=%d"%(serialPort,baudRate))
+
+print("参数设置 ，波特率=%d"%(baudRate))
 
 
 def create_magic_packet(macaddress):
@@ -91,55 +127,68 @@ def send_magic_packet(*macs, **kwargs):
     sock.close()
 
 
-class Connection(object):
-    clients = set()
-    def __init__(self, stream, address):
-        Connection.clients.add(self)
-        self._stream = stream
-        self._address = address
-        self._stream.set_close_callback(self.on_close)
-        self.read_message()
-        print("A new connection has entered ", address)
-
-    def read_message(self):
-        self._stream.read_until(b'\n', self.broadcast_messages)
-
-    def broadcast_messages(self, data):
-        print("User said:", data[:-1], self._address)
-        for conn in Connection.clients:
-            conn.send_message(data)
-        self.read_message()
-
-    def send_message(self, data):
-        self._stream.write(data)
-
-    def on_close(self):
-        print("A connection close", self._address)
-        Connection.clients.remove(self)
-
-
 class EchoServer(TCPServer):
     clients=set()
     @gen.coroutine
     def handle_stream(self, stream, address):
         self.clients.add(stream)
         print("connection num is:", len(self.clients))
-        #Connection(stream, address)
         while True:
             try:
                 data = yield stream.read_until(b"\n")
                 logger.info("Received bytes: %s", data)
                 temp = str(data, encoding="utf-8").strip()
-                #print(temp)
-                if temp is '1':
-                    print("on")
-                    send_magic_packet('ff.ff.ff.ff.ff.ff', '08-60-6E-75-98-2D', 'F8-B1-56-B5-06-D5',
-                                      '10-7B-44-92-F1-B9', 'FFFFFFFFFFFF')
-                    ser1.write("1".encode())
-                    ser2.write("2".encode())
-                    ser3.write("3".encode())
-                else:
-                    print("off")
+                #off@pc1&pc2$pro1&pro2&pro3
+                #on@pc1&pc2$pro1&pro2&pro3
+                print(temp)
+                on_off_arr = temp.split("@")
+                devices=on_off_arr[1].split("$")
+                pcs=devices[0]
+                pros=devices[1]
+                pcArr = pcs.split("&")
+                proArr=pros.split("&")
+                print(pcArr)
+                print(proArr)
+                if(op.eq(on_off_arr[0],"on")):#开
+                    for pc in pcArr:
+                        ip_mac = pc_device[pc]
+                        ip_mac_arr = ip_mac.split("@")
+                        send_magic_packet('ff.ff.ff.ff.ff.ff',ip_mac_arr[0],'FFFFFFFFFFFF')
+
+                    for pro in proArr:
+                        n=pro[-1];
+                        #print(n)
+                        if(op.eq(n,"1")):
+                            if (serial_available):
+                                ser1.write(on_commad.encode())
+                                ser1.flush()
+                        elif(op.eq(n, "2")):
+                            if (serial_available):
+                                ser2.write(on_commad.encode())
+                                ser2.flush()
+                        elif (op.eq(n, "3")):
+                            if (serial_available):
+                                ser3.write(on_commad.encode())
+                                ser3.flush()
+                else:#关
+                    for pro in proArr:
+                        n=pro[-1];
+                        #print(n)
+                        if(op.eq(n,"1")):
+                            if (serial_available):
+                                ser1.write(off_commad.encode())
+                                ser1.flush()
+                        elif(op.eq(n, "2")):
+                            if (serial_available):
+                                ser2.write(off_commad.encode())
+                                ser2.flush()
+                        elif (op.eq(n, "3")):
+                            if (serial_available):
+                                ser3.write(off_commad.encode())
+                                ser3.flush()
+
+                    for c in self.clients:
+                        print(c.address)
                 if not data.endswith(b"\n"):
                     data = data + b"\n"
                 yield stream.write(data)
@@ -153,7 +202,7 @@ class EchoServer(TCPServer):
                 pass
 
     def ack(self):
-        print('ack')
+        # print('ack')
         #len1  = ser1.write("6456456464".encode())
         #len2  = ser2.write("6456456464".encode())
         #len3  = ser3.write("6456456464".encode())
@@ -161,14 +210,14 @@ class EchoServer(TCPServer):
         status = os.system("ping 192.168.5.22299")
         #print('-----:'+status)
 
-        for c in self.clients:
-            c.write(b'11');
+        # for c in self.clients:
+        #     c.write(b'11');
 
 
 if __name__ == "__main__":
     options.parse_command_line()
     server = EchoServer()
     server.listen(options.port)
-    ioloop.PeriodicCallback(server.ack, 3000).start()  # 这里的时间是毫秒
+    #ioloop.PeriodicCallback(server.ack, 3000).start()  # 这里的时间是毫秒
     logger.info("Listening on TCP port %d", options.port)
     ioloop.IOLoop.instance().start()
