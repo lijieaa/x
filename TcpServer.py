@@ -154,12 +154,12 @@ class EchoServer(TCPServer):
                             ser1.flush()
                     elif (op.eq("02",de_op[0])):
                         if (serial_available):
-                            ser1.write(on_commad.encode())
-                            ser1.flush()
+                            ser2.write(on_commad.encode())
+                            ser2.flush()
                     elif (op.eq("03",de_op[0])):
                         if (serial_available):
-                            ser1.write(on_commad.encode())
-                            ser1.flush()
+                            ser2.write(on_commad.encode())
+                            ser2.flush()
                 else:#关
                     if (op.eq("04",de_op[0])):
                         for c in self.clients:
@@ -214,6 +214,6 @@ if __name__ == "__main__":
     options.parse_command_line()
     server = EchoServer()
     server.listen(options.port)
-    ioloop.PeriodicCallback(server.ack, 10*1000).start()  # 这里的时间是毫秒
+    #ioloop.PeriodicCallback(server.ack, 10*1000).start()  # 这里的时间是毫秒
     logger.info("Listening on TCP port %d", options.port)
     ioloop.IOLoop.instance().start()
