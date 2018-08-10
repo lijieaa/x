@@ -19,7 +19,7 @@ off_commad="PWR OFF" #关投影机指令
 #设备信息
 pc_device={
     "04":"08-60-6E-75-98-2D@192.168.0.1",
-    "05":"08-60-6E-75-98-2D@192.168.0.1"
+    "05":"14-DD-A9-56-6B-D0@192.168.30.22"
 }
 #配置
 
@@ -173,12 +173,12 @@ class EchoServer(TCPServer):
                             ser1.flush()
                     elif (op.eq("02",de_op[0])):
                         if (serial_available):
-                            ser1.write(off_commad.encode())
-                            ser1.flush()
+                            ser2.write(off_commad.encode())
+                            ser2.flush()
                     elif (op.eq("03",de_op[0])):
                         if (serial_available):
-                            ser1.write(off_commad.encode())
-                            ser1.flush()
+                            ser3.write(off_commad.encode())
+                            ser3.flush()
                 if not data.endswith(b"\n"):
                     data = data + b"\n"
                 yield stream.write(data)
@@ -192,20 +192,22 @@ class EchoServer(TCPServer):
                 pass
 
     def ack(self):
-        status04 = os.system("ping 192.168.5.22299")
+        status04 = os.system("ping 192.168.30.22")
+        #print(status04)
         if(status04):
             for c in self.clients:
-                c.write(b"04@6")
+                c.write(b"04@5")
         else:
             for c in self.clients:
-                c.write(b"04@5")
+                c.write(b"04@6")
         status05 = os.system("ping 192.168.30.20")
+        #print(status05)
         if (status05):
             for c in self.clients:
-                c.write(b"05@6")
+                c.write(b"05@5")
         else:
             for c in self.clients:
-                c.write(b"05@5")
+                c.write(b"05@6")
 
 
 if __name__ == "__main__":
