@@ -19,8 +19,8 @@ on_commad="PWR ON" #开投影机指令
 off_commad="PWR OFF" #关投影机指令
 #设备信息
 pc_device={
-    "pc1":"08-60-6E-75-98-2D@192.168.0.1",
-    "pc2":"08-60-6E-75-98-2D@192.168.0.1"
+    "04":"08-60-6E-75-98-2D@192.168.0.1",
+    "05":"08-60-6E-75-98-2D@192.168.0.1"
 }
 #配置
 
@@ -141,54 +141,45 @@ class EchoServer(TCPServer):
                 #off@pc1&pc2$pro1&pro2&pro3
                 #on@pc1&pc2$pro1&pro2&pro3
                 print(temp)
-                on_off_arr = temp.split("@")
-                devices=on_off_arr[1].split("$")
-                pcs=devices[0]
-                pros=devices[1]
-                pcArr = pcs.split("&")
-                proArr=pros.split("&")
-                print(pcArr)
-                print(proArr)
-                if(op.eq(on_off_arr[0],"on")):#开
-                    for pc in pcArr:
-                        ip_mac = pc_device[pc]
-                        ip_mac_arr = ip_mac.split("@")
-                        send_magic_packet('ff.ff.ff.ff.ff.ff',ip_mac_arr[0],'FFFFFFFFFFFF')
-
-                    for pro in proArr:
-                        n=pro[-1];
-                        #print(n)
-                        if(op.eq(n,"1")):
-                            if (serial_available):
-                                ser1.write(on_commad.encode())
-                                ser1.flush()
-                        elif(op.eq(n, "2")):
-                            if (serial_available):
-                                ser2.write(on_commad.encode())
-                                ser2.flush()
-                        elif (op.eq(n, "3")):
-                            if (serial_available):
-                                ser3.write(on_commad.encode())
-                                ser3.flush()
+                de_op = temp.split("@") #设备码操作码数组
+                print(de_op[0]) #设备码
+                print(de_op[1])#操作码
+                if(op.eq(de_op[1],"1")):#开
+                    if(op.eq("04",de_op[0])):
+                        send_magic_packet('ff.ff.ff.ff.ff.ff',pc_device["04"].split("@")[0],'FFFFFFFFFFFF')
+                    elif(op.eq("05",de_op[0])):
+                        send_magic_packet('ff.ff.ff.ff.ff.ff', pc_device["05"].split("@")[0], 'FFFFFFFFFFFF')
+                    elif(op.eq("01",de_op[0])):
+                        if (serial_available):
+                            ser1.write(on_commad.encode())
+                            ser1.flush()
+                    elif (op.eq("02",de_op[0])):
+                        if (serial_available):
+                            ser1.write(on_commad.encode())
+                            ser1.flush()
+                    elif (op.eq("03",de_op[0])):
+                        if (serial_available):
+                            ser1.write(on_commad.encode())
+                            ser1.flush()
                 else:#关
-                    for pro in proArr:
-                        n=pro[-1];
-                        #print(n)
-                        if(op.eq(n,"1")):
-                            if (serial_available):
-                                ser1.write(off_commad.encode())
-                                ser1.flush()
-                        elif(op.eq(n, "2")):
-                            if (serial_available):
-                                ser2.write(off_commad.encode())
-                                ser2.flush()
-                        elif (op.eq(n, "3")):
-                            if (serial_available):
-                                ser3.write(off_commad.encode())
-                                ser3.flush()
-
-                    for c in self.clients:
-                        print(c.address)
+                    if (op.eq("04",de_op[0])):
+                        for c in self.clients:
+                          c.write(data)
+                    elif (op.eq("05",de_op[0])):
+                        for c in self.clients:
+                          c.write(data)
+                    elif (op.eq("01",de_op[0])):
+                        if (serial_available):
+                            ser1.write(off_commad.encode())
+                            ser1.flush()
+                    elif (op.eq("02",de_op[0])):
+                        if (serial_available):
+                            ser1.write(off_commad.encode())
+                            ser1.flush()
+                    elif (op.eq("03",de_op[0])):
+                        if (serial_available):
+                            ser1.write(off_commad.encode())
+                            ser1.flush()
                 if not data.endswith(b"\n"):
                     data = data + b"\n"
                 yield stream.write(data)
@@ -202,22 +193,26 @@ class EchoServer(TCPServer):
                 pass
 
     def ack(self):
-        # print('ack')
-        #len1  = ser1.write("6456456464".encode())
-        #len2  = ser2.write("6456456464".encode())
-        #len3  = ser3.write("6456456464".encode())
-        #print(len1)  # 可以接收中文
-        status = os.system("ping 192.168.5.22299")
-        #print('-----:'+status)
-
-        # for c in self.clients:
-        #     c.write(b'11');
+        status04 = os.system("ping 192.168.5.22299")
+        if(status04):
+            for c in self.clients:
+                c.write(b"04@6")
+        else:
+            for c in self.clients:
+                c.write(b"04@5")
+        status05 = os.system("ping 192.168.30.20")
+        if (status05):
+            for c in self.clients:
+                c.write(b"05@6")
+        else:
+            for c in self.clients:
+                c.write(b"05@5")
 
 
 if __name__ == "__main__":
     options.parse_command_line()
     server = EchoServer()
     server.listen(options.port)
-    #ioloop.PeriodicCallback(server.ack, 3000).start()  # 这里的时间是毫秒
+    ioloop.PeriodicCallback(server.ack, 10*1000).start()  # 这里的时间是毫秒
     logger.info("Listening on TCP port %d", options.port)
     ioloop.IOLoop.instance().start()
