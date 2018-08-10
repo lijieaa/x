@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 import logging
-#from tornado.ioloop import IOLoop
 from tornado import ioloop
 import serial
 from tornado import gen
