@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from __future__ import absolute_import
 from __future__ import unicode_literals
 import logging
@@ -18,8 +19,8 @@ on_commad="PWR ON" #开投影机指令
 off_commad="PWR OFF" #关投影机指令
 #设备信息
 pc_device={
-    "04":"08-60-6E-75-98-2D@192.168.0.1",
-    "05":"14-DD-A9-56-6B-D0@192.168.30.22"
+    "04":"08-60-6E-75-98-2D@192.168.0.102",
+    "05":"14-DD-A9-56-6B-D0@192.168.0.111"
 }
 #配置
 
@@ -45,19 +46,19 @@ print("os=%s"%(platform.system()))
 sysstr = platform.system()
 if(sysstr =="Windows"):
     try:
-        ser1=serial.Serial("COM1",baudRate,timeout=0.5)
-        ser2=serial.Serial("COM2",baudRate,timeout=0.5)
-        ser3=serial.Serial("COM3",baudRate,timeout=0.5)
-        ser4=serial.Serial("COM4",baudRate,timeout=0.5)
+        ser0=serial.Serial("COM1",baudRate,timeout=0.5)
+        ser1=serial.Serial("COM2",baudRate,timeout=0.5)
+        ser2=serial.Serial("COM3",baudRate,timeout=0.5)
+        ser3=serial.Serial("COM4",baudRate,timeout=0.5)
     except Exception as e:
         serial_available=False
         print("串口不可用！")
 elif(sysstr == "Linux"):
     try:
-        ser1=serial.Serial("/dev/ttyUSB0",baudRate,timeout=0.5)
-        ser2=serial.Serial("/dev/ttyUSB1",baudRate,timeout=0.5)
-        ser3=serial.Serial("/dev/ttyUSB2",baudRate,timeout=0.5)
-        ser4=serial.Serial("/dev/ttyUSB3",baudRate,timeout=0.5)
+        ser0=serial.Serial("/dev/ttyUSB0",baudRate,timeout=0.5)
+        ser1=serial.Serial("/dev/ttyUSB1",baudRate,timeout=0.5)
+        ser2=serial.Serial("/dev/ttyUSB2",baudRate,timeout=0.5)
+        ser3=serial.Serial("/dev/ttyUSB3",baudRate,timeout=0.5)
     except Exception as e:
         serial_available=False
         print("串口不可用！")
@@ -150,16 +151,20 @@ class EchoServer(TCPServer):
                         send_magic_packet('ff.ff.ff.ff.ff.ff', pc_device["05"].split("@")[0], 'FFFFFFFFFFFF')
                     elif(op.eq("01",de_op[0])):
                         if (serial_available):
-                            ser1.write(on_commad.encode())
-                            ser1.flush()
+                            ser0.write(on_commad.encode())
+                            ser0.flush()
                     elif (op.eq("02",de_op[0])):
                         if (serial_available):
-                            ser2.write(on_commad.encode())
-                            ser2.flush()
+                            ser1.write(on_commad.encode())
+                            ser1.flush()
                     elif (op.eq("03",de_op[0])):
                         if (serial_available):
                             ser2.write(on_commad.encode())
                             ser2.flush()
+                    elif (op.eq("04",de_op[0])):
+                        if (serial_available):
+                            ser3.write(on_commad.encode())
+                            ser3.flush()
                 else:#关
                     if (op.eq("04",de_op[0])):
                         for c in self.clients:
@@ -169,13 +174,17 @@ class EchoServer(TCPServer):
                           c.write(data)
                     elif (op.eq("01",de_op[0])):
                         if (serial_available):
+                            ser0.write(off_commad.encode())
+                            ser0.flush()
+                    elif (op.eq("02",de_op[0])):
+                        if (serial_available):
                             ser1.write(off_commad.encode())
                             ser1.flush()
-                    elif (op.eq("02",de_op[0])):
+                    elif (op.eq("03",de_op[0])):
                         if (serial_available):
                             ser2.write(off_commad.encode())
                             ser2.flush()
-                    elif (op.eq("03",de_op[0])):
+                    elif (op.eq("04",de_op[0])):
                         if (serial_available):
                             ser3.write(off_commad.encode())
                             ser3.flush()
@@ -192,7 +201,7 @@ class EchoServer(TCPServer):
                 pass
 
     def ack(self):
-        status04 = os.system("ping 192.168.30.22")
+        status04 = os.system("ping "+pc_device["04"].split("@")[1]+" -c 1")
         #print(status04)
         if(status04):
             for c in self.clients:
@@ -200,7 +209,7 @@ class EchoServer(TCPServer):
         else:
             for c in self.clients:
                 c.write(b"04@6")
-        status05 = os.system("ping 192.168.30.20")
+        status05 = os.system("ping "+pc_device["05"].split("@")[1]+" -c 1")
         #print(status05)
         if (status05):
             for c in self.clients:
@@ -214,6 +223,6 @@ if __name__ == "__main__":
     options.parse_command_line()
     server = EchoServer()
     server.listen(options.port)
-    #ioloop.PeriodicCallback(server.ack, 10*1000).start()  # 这里的时间是毫秒
+    ioloop.PeriodicCallback(server.ack, 10*1000).start()  # 这里的时间是毫秒
     logger.info("Listening on TCP port %d", options.port)
     ioloop.IOLoop.instance().start()
