@@ -19,7 +19,7 @@ on_commad="PWR ON" #开投影机指令
 off_commad="PWR OFF" #关投影机指令
 #设备信息
 pc_device={
-    "04":"08-60-6E-75-98-2D@192.168.0.102",
+    "04":"08-60-6E-75-98-2D@192.168.30.20",
     "05":"14-DD-A9-56-6B-D0@192.168.0.111"
 }
 #配置
@@ -205,18 +205,18 @@ class EchoServer(TCPServer):
         #print(status04)
         if(status04):
             for c in self.clients:
-                c.write(b"04@5")
+                c.write(b"04@5\n")
         else:
             for c in self.clients:
-                c.write(b"04@6")
+                c.write(b"04@6\n")
         status05 = os.system("ping "+pc_device["05"].split("@")[1]+" -c 1")
         #print(status05)
         if (status05):
             for c in self.clients:
-                c.write(b"05@5")
+                c.write(b"05@5\n")
         else:
             for c in self.clients:
-                c.write(b"05@6")
+                c.write(b"05@6\n")
 
 
 if __name__ == "__main__":
