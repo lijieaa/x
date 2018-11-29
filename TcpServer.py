@@ -20,7 +20,11 @@ off_commad="PWR OFF" #关投影机指令
 #设备信息
 pc_device={
     "04":"08-60-6E-75-98-2D@192.168.30.20",
-    "05":"14-DD-A9-56-6B-D0@192.168.0.111"
+    "05":"14-DD-A9-56-6B-D0@192.168.0.111",
+    "1":[
+        "08-60-6E-75-98-2D@192.168.30.20",
+        "14-DD-A9-56-6B-D0@192.168.0.111",
+    ]
 }
 #配置
 
@@ -138,10 +142,8 @@ class EchoServer(TCPServer):
                 data = yield stream.read_until(b"\n")
                 logger.info("Received bytes: %s", data)
                 temp = str(data, encoding="utf-8").strip()
-                #off@pc1&pc2$pro1&pro2&pro3
-                #on@pc1&pc2$pro1&pro2&pro3
                 print(temp)
-                de_op = temp.split("@") #设备码操作码数组
+                de_op = temp.split("@") #设备码 操作码 数组
                 print(de_op[0]) #设备码
                 print(de_op[1])#操作码
                 if(op.eq(de_op[1],"1")):#开
@@ -149,6 +151,12 @@ class EchoServer(TCPServer):
                         send_magic_packet('ff.ff.ff.ff.ff.ff',pc_device["04"].split("@")[0],'FFFFFFFFFFFF')
                     elif(op.eq("05",de_op[0])):
                         send_magic_packet('ff.ff.ff.ff.ff.ff', pc_device["05"].split("@")[0], 'FFFFFFFFFFFF')
+                    elif (op.eq("1", de_op[0])):#开所有电脑
+                        print(pc_device["1"]);
+                        devices=pc_device["1"];
+                        for d in devices:
+                            #print(d.split("@")[0])
+                            send_magic_packet('ff.ff.ff.ff.ff.ff', d.split("@")[0], 'FFFFFFFFFFFF')
                     elif(op.eq("01",de_op[0])):
                         if (serial_available):
                             ser0.write(on_commad.encode())
@@ -172,6 +180,9 @@ class EchoServer(TCPServer):
                     elif (op.eq("05",de_op[0])):
                         for c in self.clients:
                           c.write(data)
+                    elif (op.eq("1", de_op[0])):
+                          for c in self.clients:
+                              c.write(data)
                     elif (op.eq("01",de_op[0])):
                         if (serial_available):
                             ser0.write(off_commad.encode())
@@ -200,29 +211,10 @@ class EchoServer(TCPServer):
                 #print(e)
                 pass
 
-    def ack(self):
-        status04 = os.system("ping "+pc_device["04"].split("@")[1]+" -c 1")
-        #print(status04)
-        if(status04):
-            for c in self.clients:
-                c.write(b"04@5\n")
-        else:
-            for c in self.clients:
-                c.write(b"04@6\n")
-        status05 = os.system("ping "+pc_device["05"].split("@")[1]+" -c 1")
-        #print(status05)
-        if (status05):
-            for c in self.clients:
-                c.write(b"05@5\n")
-        else:
-            for c in self.clients:
-                c.write(b"05@6\n")
-
 
 if __name__ == "__main__":
     options.parse_command_line()
     server = EchoServer()
     server.listen(options.port)
-    ioloop.PeriodicCallback(server.ack, 10*1000).start()  # 这里的时间是毫秒
     logger.info("Listening on TCP port %d", options.port)
     ioloop.IOLoop.instance().start()

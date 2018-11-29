@@ -1,0 +1,12 @@
+安装tornado
+tar -zxvf tornado-5.1.1.tar.gz
+cd pyserial-3.4/
+sudo python setup.py build
+sudo python setup.py install
+
+
+安装pyserial
+tar -zxvf pyserial-3.4.tar.gz
+cd pyserial-3.4
+sudo python setup.py build
+sudo python setup.py install
